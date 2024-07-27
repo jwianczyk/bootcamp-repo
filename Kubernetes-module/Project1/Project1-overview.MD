@@ -14,5 +14,6 @@ Project description:
 Project flow is displayed in the diagram below
 ```mermaid
 sequenceDiagram
-Application UI: Mongo Express External Service ->> mongo-express: Mongo DB internal service ->> mongo-db
+Application UI ->> mongo-express: Mongo Express External Service
+mongo-express ->> mongo-db: Mongo DB internal service
 ```
