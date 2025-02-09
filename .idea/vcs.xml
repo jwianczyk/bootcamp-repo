@@ -2,5 +2,6 @@
 <project version="4">
   <component name="VcsDirectoryMappings">
     <mapping directory="" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/10.Kubernetes-module/Project2/configmap-and-secret-volume-types" vcs="Git" />
   </component>
 </project>

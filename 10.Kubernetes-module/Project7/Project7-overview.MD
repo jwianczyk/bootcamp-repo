@@ -1,4 +1,4 @@
-# Deploy Deploy our web application in K8s cluster from private Docker registryMicroservices with Helmfile
+# Deploy microservices with Helmfile
 
 The goal of this project is deployment of microservice using helmfile 
 - `Kubernetes`
