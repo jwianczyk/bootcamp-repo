@@ -1,0 +1,59 @@
+---
+- name: Install node and npm
+  hosts: digitalocean
+  tasks:
+    - name: Update apt repository
+      ansible.builtin.apt:
+        update_cache: true
+        force_apt_get:  true
+        cache_valid_time: 3600
+
+    - name: Install node and npm
+      apt:
+        pkg:
+          - nodejs
+          - npm
+
+- name: Create new user for node app
+  hosts:  digitalocean
+  tasks:
+    - name: Create Linux user
+      ansible.builtin.user:
+        name: nodejs
+        comment:  User for nodejs application
+        group:  admin
+
+- name: Deploy nodejs application
+  hosts:  digitalocean
+  become: true
+  become_user:  nodejs
+  tasks:
+    - name: Copy nodejs directory to a server
+      ansible.builtin.copy: 
+        src: /home/jakub/bootcamp-repo/15.Ansible-module/Project1/nodejs-app/nodejs-app-1.0.0.tgz
+        dest: /home/nodejs/app-1.0.0.tgz
+    
+    - name: Unpack node app tar
+      ansible.builtin.unarchive:
+        src:  /home/nodejs/app-1.0.0.tgz
+        dest: /home/nodejs
+        remote_src: yes
+
+    - name: Install packages
+      community.general.npm:
+        path: /home/nodejs/package
+    
+    - name: Start the app
+      ansible.builtin.command:
+        chdir:  /home/nodejs/package/app
+        cmd:  node server
+      async:  1000
+      poll: 0
+
+    - name: Ensure app is running
+      ansible.builtin.shell:  ps aux | grep node
+      register: app_status
+      
+    - ansible.builtin.debug:
+        msg:  "{{ app_status.stdout_lines }}"
+
