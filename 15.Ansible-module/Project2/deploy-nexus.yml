@@ -1,0 +1,115 @@
+---
+- name: Install java and net-tools
+  hosts:  digitalocean
+  tasks:
+    - name: Update apt repository
+      ansible.builtin.apt:
+        update_cache: true
+        force_apt_get:  true
+        cache_valid_time: 3600
+    
+    - name: Install java
+      ansible.builtin.apt:
+        name: openjdk-8-jre-headless
+    
+    - name: Install net tools
+      ansible.builtin.apt:
+        name: net-tools
+
+- name: Download nexus .tar file
+  hosts:  digitalocean
+  tasks:
+    - name: Check nexus directory stats
+      ansible.builtin.stat:
+        path: /opt/nexus
+      register: stat_result
+
+    - name: Download nexus
+      get_url:
+        url:  https://download.sonatype.com/nexus/3/nexus-3.84.1-01-linux-x86_64.tar.gz
+        dest: /opt/
+      register: download_result
+
+    - name: Untar the nexus tar file
+      ansible.builtin.unarchive:
+        src:  "{{download_result.dest}}"
+        dest: /opt/
+        remote_src: True
+      when: not stat_result.stat.exists
+
+    - name: Get nexus directory name
+      ansible.builtin.find:
+        paths:  /opt/
+        pattern:  "nexus-*"
+        file_type:  directory
+      register: find_result
+
+    - name: Rename nexus directory 
+      shell:  mv {{find_result.files[0].path}} /opt/nexus
+      when: not stat_result.stat.exists
+
+- name: Create nexus user 
+  hosts:  digitalocean
+  tasks:
+    - name: Create nexus group
+      ansible.builtin.group:
+        name: nexus
+        state:  present
+
+    - name: Create nexus user
+      ansible.builtin.user:
+        name: nexus
+        comment:  User for running nexus app
+        group:  nexus
+
+    - name: Make nexus user owner of nexus directory
+      ansible.builtin.file:
+        path: /opt/nexus
+        state:  directory
+        owner:  nexus
+        group:  nexus
+        recurse:  True
+
+    - name: make nexus user owner of sonatype-work directory
+      ansible.builtin.file:
+        path: /opt/sonatype-work
+        state:  directory
+        owner:  nexus
+        group:  nexus
+        recurse:  True
+
+- name: Start nexus with nexus user
+  hosts:  digitalocean
+  become: True
+  become_user:  nexus
+  tasks:  
+    - name: Set run_as_user nexus
+      ansible.builtin.blockinfile:
+        path: /opt/nexus/bin/nexus.rc
+        block:  |
+          run_as_user="nexus"
+        create: True
+
+    - name: Start nexus
+      ansible.builtin.command:
+        cmd:  /opt/nexus/bin/nexus start
+
+- name: Verify nexus is running
+  hosts:  digitalocean
+  tasks:  
+    - name: Check with ps
+      ansible.builtin.shell:  ps aux | grep nexus
+      register: app_status
+
+    - debug:  msg={{app_status.stdout_lines}}
+
+    - name: Wait for nexus to open port
+      ansible.builtin.wait_for:
+        port: 8081
+        delay:  10
+
+    - name: Check with netstat
+      ansible.builtin.shell:  netstat -plnt
+      register: app_status
+
+    - debug:  msg={{app_status.stdout_lines}}
